@@ -4,14 +4,20 @@ import { testDatabaseConnection } from "./config/db.js";
 
 const port = process.env.PORT || 4000;
 
-async function start() {
-  await testDatabaseConnection();
-  app.listen(port, () => {
-    console.log(`Kabad Factory API running on http://localhost:${port}`);
-  });
-}
+const server = app.listen(port, "0.0.0.0", () => {
+  console.log(`Kabad Factory API listening on port ${port}`);
 
-start().catch((error) => {
-  console.error("Failed to start API", error);
+  // Check MySQL after the HTTP server starts.
+  testDatabaseConnection()
+    .then(() => {
+      console.log("Database connection successful");
+    })
+    .catch((error) => {
+      console.error("Database connection failed:", error);
+    });
+});
+
+server.on("error", (error) => {
+  console.error("Failed to start API:", error);
   process.exit(1);
 });
