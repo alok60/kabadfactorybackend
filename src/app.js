@@ -1,4 +1,3 @@
-
 import cors from "cors";
 import express from "express";
 import path from "path";
@@ -21,16 +20,16 @@ import serviceabilityRoutes from "./routes/serviceability.routes.js";
 import { errorHandler } from "./middleware/errorHandler.js";
 
 const app = express();
+
+app.set("trust proxy", 1);
+
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
 const isProduction = process.env.NODE_ENV === "production";
 
 // Configure these in your production environment.
-const allowedOrigins = [
-  process.env.ADMIN_URL,
-  process.env.WEBSITE_URL,
-]
+const allowedOrigins = [process.env.ADMIN_URL, process.env.WEBSITE_URL]
   .filter(Boolean)
   .map((origin) => origin.replace(/\/$/, ""));
 
@@ -77,7 +76,7 @@ app.use(
     credentials: true,
     methods: ["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
     allowedHeaders: ["Content-Type", "Authorization"],
-  })
+  }),
 );
 
 // Request parsing limits
@@ -87,7 +86,7 @@ app.use(
     extended: true,
     limit: "100kb",
     parameterLimit: 1000,
-  })
+  }),
 );
 
 // Request logging
