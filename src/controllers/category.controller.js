@@ -2,7 +2,7 @@ import { pool } from "../config/db.js";
 
 export async function listCategories(req, res) {
   const [rows] = await pool.execute(
-    "SELECT id, name, slug, unit, price, image_url AS imageUrl, description FROM scrap_categories WHERE is_active = 1 ORDER BY display_order, name"
+    "SELECT id, name, slug, category, unit, price, image_url AS imageUrl, description FROM scrap_categories WHERE is_active = 1 ORDER BY category, display_order, name"
   );
   res.json({ data: rows.map((row) => ({ ...row, iconUrl: publicMediaUrl(req, row.imageUrl) })) });
 }

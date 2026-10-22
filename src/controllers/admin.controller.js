@@ -6,6 +6,7 @@ import { z } from "zod";
 import { signToken } from "../services/token.service.js";
 import { bumpPickupPricingConfiguration, getPickupChargeForPincode, normalizePincode } from "../services/pickupCharge.service.js";
 import { HttpError } from "../utils/httpError.js";
+import { normalizeScrapMaterialCategory } from "../constants/scrapMaterialCategories.js";
 
 export const adminLoginSchema = z.object({
   body: z.object({
@@ -377,7 +378,7 @@ export async function listCategories(req, res) {
   if (status) filters.push(status === "Hidden" ? "is_active = 0" : "is_active = 1");
   const sortMap = { name: "name", status: "is_active", price: "price", createdAt: "created_at" };
   const [rows] = await pool.execute(
-    `SELECT id, name AS category, unit, CONCAT('Rs ', price) AS price, description,
+    `SELECT id, name AS category, category AS materialCategory, unit, CONCAT('Rs ', price) AS price, description,
             image_url AS imageUrl,
             IF(is_active = 1, 'Active', 'Hidden') AS status
      FROM scrap_categories
@@ -391,14 +392,17 @@ export async function listCategories(req, res) {
 }
 
 export async function createCategory(req, res) {
-  const { category, unit, price, description, status } = req.body;
+  const { category, materialCategory, unit, price, description, status } = req.body;
+  const normalizedMaterialCategory = normalizeScrapMaterialCategory(materialCategory);
+  if (!normalizedMaterialCategory) throw new HttpError(400, "Choose a valid material category");
   const numericPrice = parsePrice(price);
   const iconPath = req.file ? await persistUploadedCategoryIcon(req.file) : null;
   const [result] = await pool.execute(
-    `INSERT INTO scrap_categories (name, slug, unit, price, image_url, description, is_active)
-     VALUES (:name, :slug, :unit, :price, :imageUrl, :description, :isActive)`,
+    `INSERT INTO scrap_categories (name, category, slug, unit, price, image_url, description, is_active)
+     VALUES (:name, :materialCategory, :slug, :unit, :price, :imageUrl, :description, :isActive)`,
     {
       name: category,
+      materialCategory: normalizedMaterialCategory,
       slug: slugify(category),
       unit: unit || "kg",
       price: numericPrice,
@@ -410,6 +414,7 @@ export async function createCategory(req, res) {
   res.status(201).json({
     id: result.insertId,
     category,
+    materialCategory: normalizedMaterialCategory,
     unit: unit || "kg",
     price: `Rs ${numericPrice}`,
     description: description || "",
@@ -420,16 +425,18 @@ export async function createCategory(req, res) {
 }
 
 export async function updateCategory(req, res) {
-  const { category, unit, price, description, status, removeIcon } = req.body;
+  const { category, materialCategory, unit, price, description, status, removeIcon } = req.body;
+  const normalizedMaterialCategory = normalizeScrapMaterialCategory(materialCategory);
+  if (!normalizedMaterialCategory) throw new HttpError(400, "Choose a valid material category");
   const numericPrice = parsePrice(price);
   const [[existing]] = await pool.execute("SELECT image_url AS imageUrl FROM scrap_categories WHERE id = :id LIMIT 1", { id: req.params.id });
   const nextIconPath = req.file ? await persistUploadedCategoryIcon(req.file) : removeIcon === "true" ? null : existing?.imageUrl || null;
 
   await pool.execute(
     `UPDATE scrap_categories
-     SET name = :name, unit = :unit, price = :price, image_url = :imageUrl, description = :description, is_active = :isActive
+     SET name = :name, category = :materialCategory, unit = :unit, price = :price, image_url = :imageUrl, description = :description, is_active = :isActive
      WHERE id = :id`,
-    { id: req.params.id, name: category, unit: unit || "kg", price: numericPrice, imageUrl: nextIconPath, description: description || "", isActive: status === "Hidden" ? 0 : 1 }
+    { id: req.params.id, name: category, materialCategory: normalizedMaterialCategory, unit: unit || "kg", price: numericPrice, imageUrl: nextIconPath, description: description || "", isActive: status === "Hidden" ? 0 : 1 }
   );
 
   if ((req.file || removeIcon === "true") && existing?.imageUrl && existing.imageUrl !== nextIconPath) {
@@ -439,6 +446,7 @@ export async function updateCategory(req, res) {
   res.json({
     id: Number(req.params.id),
     category,
+    materialCategory: normalizedMaterialCategory,
     unit: unit || "kg",
     price: `Rs ${numericPrice}`,
     description: description || "",

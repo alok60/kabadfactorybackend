@@ -29,7 +29,7 @@ const __dirname = path.dirname(__filename);
 const isProduction = process.env.NODE_ENV === "production";
 
 // Configure these in your production environment.
-const allowedOrigins = [process.env.ADMIN_URL, process.env.WEBSITE_URL]
+const allowedOrigins = [process.env.ADMIN_URL, process.env.WEBSITE_URL,]
   .filter(Boolean)
   .map((origin) => origin.replace(/\/$/, ""));
 
