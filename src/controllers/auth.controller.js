@@ -22,6 +22,7 @@ export const registerSchema = z.object({
   })
 });
 
+
 export async function login(req, res, next) {
   const { mobile, password } = req.validated.body;
   const [rows] = await pool.execute(
@@ -91,6 +92,7 @@ export async function me(req, res, next) {
     }
   });
 }
+
 
 function sessionPayload(user) {
   const safeUser = {
